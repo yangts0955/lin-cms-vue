@@ -1,5 +1,6 @@
 import store from '@/store'
 import _axios, { get, put } from '@/lin/plugin/axios'
+import { roleTypes } from 'element-plus'
 import { saveTokens } from '../util/token'
 
 export default class User {
@@ -17,6 +18,15 @@ export default class User {
         password: user.password,
         group_ids: user.groupIds,
         confirm_password: user.confirmPassword,
+        role: user.role,
+        gender: user.gender,
+        remark: user.remark,
+        grade: user.grade,
+        real_name: user.realName,
+        birthday: user.birthday,
+        phone_number: user.phoneNumber,
+        wx_number: user.wxNumber,
+        subject: user.subject,
       },
       handleError: true,
     })
@@ -52,7 +62,7 @@ export default class User {
   static async getInformation() {
     const info = await get('cms/user/information')
     const storeUser = store.getters.user === null ? {} : store.getters.user
-    return Object.assign({ ...storeUser }, info)
+    return { ...storeUser, ...info }
   }
 
   /**
@@ -61,7 +71,7 @@ export default class User {
   static async getPermissions() {
     const info = await get('cms/user/permissions')
     const storeUser = store.getters.user === null ? {} : store.getters.user
-    return Object.assign({ ...storeUser }, info)
+    return { ...storeUser, ...info }
   }
 
   /**
@@ -77,5 +87,10 @@ export default class User {
       confirm_password,
       old_password,
     })
+  }
+
+  static async getEnums(type) {
+    const enums = await get(`cms/user/enum/${type}`)
+    return enums
   }
 }

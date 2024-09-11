@@ -2,6 +2,8 @@ import Utils from '@/lin/util/util'
 import adminConfig from './admin'
 import bookConfig from './book' // 引入图书管理路由文件
 import pluginsConfig from './plugin'
+import courseConfig from './course'
+import scheduleConfig from './schedule'
 
 // eslint-disable-next-line import/no-mutable-exports
 let homeRouter = [
@@ -50,6 +52,8 @@ let homeRouter = [
   },
   bookConfig,
   adminConfig,
+  courseConfig,
+  scheduleConfig,
 ]
 
 // 接入插件

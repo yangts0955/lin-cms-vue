@@ -181,10 +181,35 @@ Utils.sortByOrder = (source = []) => {
 Utils.deepClone = data => cloneDeep(data)
 
 /**
+ * 浅拷贝
+ */
+Utils.listAssign = (a, b) =>
+  Object.keys(a).forEach(key => {
+    a[key] = b[key] || a[key]
+  })
+
+/**
  * 中划线转驼峰
  */
 Utils.came = str => {
   return `${str}`.replace(/-\D/g, match => match.charAt(1).toUpperCase())
+}
+
+Utils.dateToTimeString = date => {
+  const hours = date.getHours().toString().padStart(2, '0')
+  const minutes = date.getMinutes().toString().padStart(2, '0')
+  const seconds = date.getSeconds().toString().padStart(2, '0')
+  return `${hours}:${minutes}:${seconds}`
+}
+
+/**
+ * 判断空值
+ */
+Utils.isEmpty = value => {
+  if (value == null) return true // 捕获 undefined 和 null
+  if (typeof value === 'string' || Array.isArray(value)) return value.length === 0
+  if (typeof value === 'object') return Object.keys(value).length === 0
+  return false
 }
 
 /**
@@ -200,7 +225,6 @@ Utils.hasPermission = (permissions, route, user) => {
   }
   return true
 }
-
 let cached
 /**
  * 获取窗口滚动条大小, From: https://github.com/react-component/util/blob/master/src/getScrollBarSize.js

@@ -16,6 +16,11 @@ module.exports = {
     devtool: 'source-map',
     resolve: {
       extensions: ['.js', '.json', '.vue', '.scss', '.html'],
+      alias: {
+        '@': resolve('src'),
+        lin: resolve('src/lin'),
+        assets: resolve('src/assets'),
+      },
     },
   },
   css: {

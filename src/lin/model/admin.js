@@ -119,10 +119,18 @@ export default class Admin {
   }
 
   // eslint-disable-next-line camelcase
-  static async updateOneUser(email, group_ids, id) {
+  static async updateOneUser(user, id) {
     const res = await put(`cms/admin/user/${id}`, {
-      email,
-      group_ids,
+      email: user.email,
+      group_ids: user.groupIds,
+      gender: user.gender,
+      grade: user.grade,
+      subject: user.subject,
+      birthday: user.birthday,
+      real_name: user.realName,
+      phone_number: user.phoneNumber,
+      wx_number: user.wxNumber,
+      remark: user.remark,
     })
     return res
   }
@@ -151,6 +159,25 @@ export default class Admin {
       group_id,
       permission_ids,
     })
+    return res
+  }
+
+  static async getTeachers(subject) {
+    const res = await get('v1/root/query/teacher', {
+      subject,
+    })
+    return res
+  }
+
+  static async getStudents(grade) {
+    const res = await get('v1/root/query/student', {
+      grade,
+    })
+    return res
+  }
+
+  static async getTeachersAndStudents() {
+    const res = await get('v1/root/query/teacherAndStudent')
     return res
   }
 }

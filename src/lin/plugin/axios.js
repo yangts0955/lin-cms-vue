@@ -15,7 +15,7 @@ const config = {
   baseURL: Config.baseURL || '',
   timeout: 5 * 1000, // 请求超时时间设置
   crossDomain: true,
-  // withCredentials: true, // Check cross-site Access-Control
+  withCredentials: true, // Check cross-site Access-Control
   // 定义可获得的http响应状态码
   // return true、设置为null或者undefined，promise将resolved,否则将rejected
   validateStatus(status) {

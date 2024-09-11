@@ -3,15 +3,41 @@
     <div class="header">
       <div class="title">用户列表</div>
       <!-- 分组选择下拉框 -->
-      <el-select filterable v-model="groupId" placeholder="请选择分组" @change="handleChange" clearable>
-        <el-option v-for="(group, index) in allGroups" :key="index" :label="group.name" :value="group.id"> </el-option>
+      <el-select filterable v-model="groupId" placeholder="选择身份" @change="handleChange" clearable>
+        <el-option v-for="(group, index) in allGroups" :key="index" :label="group.info" :value="group.id"> </el-option>
       </el-select>
     </div>
     <!-- 表格 -->
     <el-table :data="tableData" v-loading="loading" @row-dblclick="rowDoubleClick">
-      <el-table-column prop="username" label="名称"></el-table-column>
-      <el-table-column prop="groupNames" label="所属分组"></el-table-column>
-      <el-table-column label="操作" fixed="right" width="275">
+      <el-table-column prop="real_name" label="姓名" align="center"></el-table-column>
+      <el-table-column prop="username" label="名称" align="center"></el-table-column>
+      <el-table-column prop="groupNames" label="所属分组" align="center"></el-table-column>
+      <el-table-column prop="gender" label="性别" align="center">
+        <template #default="scope">
+          {{ genderValue(scope.row.gender) }}
+        </template>
+      </el-table-column>
+      <el-table-column prop="grade" label="年级" align="center">
+        <template #default="scope">
+          {{ gradeValue(scope.row.grade) }}
+        </template>
+      </el-table-column>
+      <el-table-column prop="grade" label="学科" align="center">
+        <template #default="scope">
+          {{ subjectValue(scope.row.subject) }}
+        </template>
+      </el-table-column>
+      <el-table-column prop="age" label="年龄" align="center"></el-table-column>
+      <el-table-column prop="birthday" label="生日" align="center"></el-table-column>
+      <el-table-column prop="phone_number" label="手机号" align="center"></el-table-column>
+      <el-table-column prop="role" label="身份" align="center">
+        <template #default="scope">
+          {{ roleValue(scope.row.role) }}
+        </template>
+      </el-table-column>
+      <el-table-column prop="wx_number" label="微信" align="center"></el-table-column>
+      <el-table-column prop="remark" label="备注" align="center"></el-table-column>
+      <el-table-column label="操作" fixed="right" width="275" align="">
         <template #default="scope">
           <el-button plain size="mini" type="primary" @click="handleEdit(scope.row)">编辑</el-button>
           <el-button plain size="mini" type="danger" @click="handleDelete(scope.row.id)">删除</el-button>
@@ -32,7 +58,13 @@
       </el-pagination>
     </div>
     <!-- 弹窗 -->
-    <el-dialog title="用户信息" :append-to-body="true" :before-close="handleClose" v-model="dialogFormVisible">
+    <el-dialog
+      title="用户信息"
+      :append-to-body="true"
+      :before-close="handleClose"
+      v-model="dialogFormVisible"
+      style="margin-top: 30px"
+    >
       <div style="margin-top: -25px">
         <el-tabs v-model="activeTab" @tab-click="handleClick">
           <el-tab-pane label="修改信息" name="修改信息">
@@ -42,7 +74,7 @@
               class="info"
               pageType="edit"
               :info="userInfo"
-              :submit="false"
+              :submit="true"
               :allGroups="allGroups"
               labelPosition="right"
               v-if="dialogFormVisible"
@@ -70,6 +102,7 @@ import { ref, reactive } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import AdminModel from 'lin/model/admin'
 
+import { GenderEnum, GradeEnum, RoleEnum, SubjectEnum } from '@/lin/model/enums'
 import UserInfo from './user-info'
 import UserPassword from './user-password'
 import { useUserList, useFormData } from './use-user'
@@ -101,6 +134,16 @@ export default {
       username: '',
       password: '',
       groups: [],
+      real_name: '',
+      age: '',
+      gender: '',
+      grade: '',
+      subject: '',
+      phone_number: '',
+      birthday: '',
+      role: '',
+      wx_number: '',
+      remark: '',
       confirm_password: '',
     })
 
@@ -112,6 +155,16 @@ export default {
       userInfo.email = row.email
       userInfo.groups = row.groups
       userInfo.username = row.username
+      userInfo.real_name = row.real_name
+      userInfo.gender = row.gender
+      userInfo.grade = row.grade
+      userInfo.subject = row.subject
+      userInfo.age = row.age
+      userInfo.phone_number = row.phone_number
+      userInfo.birthday = row.birthday
+      userInfo.role = row.role
+      userInfo.wx_number = row.wx_number
+      userInfo.remark = row.remark
       dialogFormVisible.value = true
     }
 
@@ -151,6 +204,11 @@ export default {
       handleEdit(row)
     }
 
+    const genderValue = genderCode => GenderEnum[genderCode]
+    const gradeValue = gradeCode => GradeEnum[gradeCode]
+    const roleValue = roleCode => RoleEnum[roleCode]
+    const subjectValue = subjectCode => SubjectEnum[subjectCode]
+
     return {
       id,
       info,
@@ -177,6 +235,10 @@ export default {
       dialogFormVisible,
       handleCurrentChange,
       handlePasswordResult,
+      genderValue,
+      gradeValue,
+      roleValue,
+      subjectValue,
     }
   },
 }
@@ -197,6 +259,10 @@ export default {
       color: $parent-title-color;
       font-size: 16px;
       font-weight: 500;
+    }
+
+    .el-select {
+      width: 200px;
     }
   }
 
