@@ -1,15 +1,23 @@
 <template>
   <div class="container">
-    <div class="title" v-if="!showEdit">新建日程</div>
+    <div class="title" v-if="!isEdit">新建日程</div>
     <div class="title" v-else>
       <span>修改日程</span>
-      <span class="back" @click="back"> <i class="iconfont icon-fanhui"></i> 返回 </span>
+      <span v-if="!isPanel" class="back" @click="back"> <i class="iconfont icon-fanhui"></i> 返回 </span>
     </div>
 
     <div class="wrap">
       <el-row>
         <el-col :lg="16" :md="20" :sm="24" :xs="24">
-          <el-form :model="schedule" status-icon ref="form" label-width="100px" @submit.prevent :rules="rules">
+          <el-form
+            v-loading="loading"
+            :model="schedule"
+            status-icon
+            ref="form"
+            label-width="100px"
+            @submit.prevent
+            :rules="rules"
+          >
             <el-form-item label="关联课程" prop="course_id">
               <el-select v-model="schedule.course_id" filterable placeholder="选择课程">
                 <el-option v-for="item in courses" :key="item.course_id" :label="item.name" :value="item.course_id">
@@ -83,7 +91,8 @@
             </el-form-item>
             <el-form-item class="submit">
               <el-button type="primary" @click="submitForm">保 存</el-button>
-              <el-button @click="resetForm">重 置</el-button>
+              <el-button v-if="!isEdit" @click="resetForm">重 置</el-button>
+              <el-button v-else type="danger" @click="deleteSchedule">删 除</el-button>
             </el-form-item>
           </el-form>
         </el-col>
@@ -94,7 +103,7 @@
 
 <script>
 import { reactive, ref, onMounted, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessageBox, ElMessage } from 'element-plus'
 import scheduleModel from '@/model/schedule'
 import courseModel from '@/model/course'
 import adminModel from '@/lin/model/admin'
@@ -103,7 +112,22 @@ import { GradeEnum, SubjectEnum } from '@/lin/model/enums'
 import { useRoute, useRouter } from 'vue-router'
 
 export default {
-  setup() {
+  props: {
+    isPanel: {
+      type: Boolean,
+      default: false,
+    },
+    scheduleId: {
+      type: Number,
+      default: undefined,
+    },
+    courseDateTime: {
+      type: Object,
+      default: undefined,
+    },
+  },
+
+  setup(props, context) {
     const form = ref(null)
     const loading = ref(false)
     const teachers = ref([])
@@ -111,6 +135,9 @@ export default {
     const courses = ref([])
     const route = useRoute()
     const router = useRouter()
+    const isPanel = ref(false)
+    const isEdit = ref(false)
+    const scheduleId = ref(null)
 
     const schedule = reactive({
       id: '',
@@ -173,16 +200,25 @@ export default {
 
     const subjectValue = subjectCode => SubjectEnum[subjectCode]
 
-    const showEdit = () => route.query.id !== null
-
     onMounted(() => {
       init()
-      if (route.query.id) {
-        getSchedule(route.query.id)
+      scheduleId.value = route.query.id ? route.query.id : props.scheduleId
+      if (scheduleId.value) {
+        getSchedule(scheduleId.value)
+        isEdit.value = true
+      }
+      if (props.courseDateTime) {
+        schedule.course_date = props.courseDateTime.course_date
+        schedule.start_time = props.courseDateTime.start_time
+        schedule.end_time = props.courseDateTime.end_time
+      }
+      if (props.isPanel === true) {
+        isPanel.value = true
       }
     })
 
     const getSchedule = async id => {
+      resetForm()
       try {
         loading.value = true
         const res = await scheduleModel.getSchedule(id)
@@ -212,16 +248,41 @@ export default {
       initCourseDate()
     }
 
+    const deleteSchedule = () => {
+      ElMessageBox.confirm('此操作将永久删除该日程, 是否继续?', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }).then(async () => {
+        const res = await scheduleModel.deleteSchedule(scheduleId.value)
+        if (res.code < window.MAX_SUCCESS_CODE) {
+          if (!isPanel.value) {
+            back()
+          } else {
+            context.emit('deleted', scheduleId.value)
+            resetForm()
+          }
+          ElMessage.success(`${res.message}`)
+        }
+      })
+    }
+
     const submitForm = async formName => {
       form.value.validate(async valid => {
         if (valid) {
           let res = {}
-          if (route.query.id) {
-            res = await scheduleModel.editSchedule(route.query.id, schedule)
-            back()
+          if (scheduleId.value) {
+            res = await scheduleModel.editSchedule(scheduleId.value, schedule)
+            if (isPanel.value) {
+              context.emit('updated', scheduleId.value)
+              resetForm()
+            }
           } else {
             res = await scheduleModel.createSchedule(schedule)
-            resetForm(formName)
+            if (isPanel.value) {
+              context.emit('created', res.schedule_id)
+              resetForm()
+            }
           }
           if (res.code < window.MAX_SUCCESS_CODE) {
             ElMessage.success(`${res.message}`)
@@ -253,8 +314,15 @@ export default {
     watch(
       () => schedule.course_id,
       () => {
-        console.log(schedule.course_id)
         getCourseDetail(schedule.course_id)
+      },
+    )
+
+    watch(
+      () => props.scheduleId,
+      () => {
+        scheduleId.value = props.scheduleId
+        getSchedule(scheduleId.value)
       },
     )
 
@@ -262,8 +330,9 @@ export default {
       back,
       form,
       rules,
-      resetForm,
+      deleteSchedule,
       submitForm,
+      resetForm,
       teachers,
       students,
       courses,
@@ -271,7 +340,8 @@ export default {
       schedule,
       gradeValue,
       subjectValue,
-      showEdit,
+      isEdit,
+      isPanel,
     }
   },
 }
@@ -289,26 +359,6 @@ function getRules() {
     }
     callback()
   }
-
-  // const checkCourseDay = (rule, value, callback) => {
-  //   if (Util.isEmpty(value)) {
-  //     callback(new Error("请选择上课时间"));
-  //   }
-  //   for (let index in value) {
-  //     if (Util.isEmpty(value[index].course_day)) {
-  //       callback(new Error("请选择上课时间"));
-  //       break;
-  //     }
-  //   }
-  //   callback();
-  // };
-
-  // const checkStartDate = (rule, value, callback) => {
-  //   if (Util.isEmpty(value)) {
-  //     callback(new Error("请选择开课日期"));
-  //   }
-  //   callback();
-  // };
 
   const rules = {
     teacher_id: [{ validator: checkInfo, trigger: 'blur', required: true }],

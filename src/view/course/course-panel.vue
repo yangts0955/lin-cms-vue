@@ -8,19 +8,24 @@ import listPlugin from '@fullcalendar/list'
 import adminModel from '@/lin/model/admin'
 import scheduleModel from '@/model/schedule'
 import { ElMessage } from 'element-plus'
+import dayjs from 'dayjs'
+import schedule from '../schedule/schedule.vue'
 
 export default defineComponent({
   components: {
     FullCalendar,
+    schedule,
   },
   setup() {
-    const selectedUser = ref(-1)
+    // const selectedUser = ref(-1);
     const groupUsers = ref([])
+    const drawer = ref(false)
+    const loading = ref(false)
 
-    const handleSelectChange = val => {
-      selectedUser.value = val
-      console.log(selectedUser.value)
-    }
+    // todo: 根据老师和学生筛选课程
+    // const handleSelectChange = (val) => {
+    //   selectedUser.value = val;
+    // };
 
     const getTeachersAndStudents = async () => {
       try {
@@ -34,8 +39,10 @@ export default defineComponent({
     })
 
     return {
-      handleSelectChange,
+      // handleSelectChange,
       groupUsers,
+      drawer,
+      loading,
     }
   },
   data() {
@@ -80,17 +87,14 @@ export default defineComponent({
         dayMaxEvents: true,
         weekends: true,
         aspectRatio: 2,
-        // displayEventTime: false,
         dateClick: this.handleDateClick,
         select: this.handleDateSelect,
         eventClick: this.handleEventClick,
         eventsSet: this.handleEvents,
         eventContent: this.handleEventContent,
         eventRemove: this.handleScheduleRemove,
-        /* you can update a remote database when these fire:
-        eventAdd:
-        eventChange:
-        */
+        currentScheduleId: undefined,
+        currentCourseDateTime: undefined,
       },
       currentEvents: [],
     }
@@ -98,45 +102,45 @@ export default defineComponent({
   methods: {
     async initSchedules() {
       try {
+        this.loading = true
         return await scheduleModel.getAllSchedules()
       } catch (error) {
         console.log(error.message)
+      } finally {
+        this.loading = false
       }
     },
     handleWeekendsToggle() {
-      this.calendarOptions.weekends = !this.calendarOptions.weekends // update a property
+      this.calendarOptions.weekends = !this.calendarOptions.weekends
     },
     handleDateSelect(selectInfo) {
-      // const title = prompt('Please enter a new title for your event')
-      // const calendarApi = selectInfo.view.calendar
-      // calendarApi.unselect() // clear date selection
-      // if (title) {
-      //   calendarApi.addEvent({
-      //     id: createEventId(),
-      //     title,
-      //     start: selectInfo.startStr,
-      //     end: selectInfo.endStr,
-      //     allDay: selectInfo.allDay,
-      //   });
-      // }
+      const currentView = this.$refs.calendar.getApi().view.type
+      if (currentView === 'timeGridWeek' || currentView === 'listMonth') {
+        const startDateTime = dayjs(selectInfo.startStr)
+        this.drawer = true
+        this.currentScheduleId = null
+        this.currentCourseDateTime = new Object({
+          course_date: startDateTime.format('YYYY-MM-DD'),
+          start_time: startDateTime.format('HH:mm'),
+          end_time: dayjs(selectInfo.endStr).format('HH:mm'),
+        })
+      }
     },
     handleEventClick(clickInfo) {
-      if (confirm(`是否确定删除该日程 '${clickInfo.event.extendedProps.name}'`)) {
-        clickInfo.event.remove()
+      const currentView = this.$refs.calendar.getApi().view.type
+      if (currentView === 'timeGridWeek' || currentView === 'listMonth') {
+        this.drawer = true
+        this.currentScheduleId = clickInfo.event.id
       }
     },
     handleEvents(events) {
       this.currentEvents = events
     },
     handleDateClick(clickInfo) {
-      const calendarApi = clickInfo.view.calendar
-      calendarApi.changeView('timeGridWeek', clickInfo.dateStr)
-    },
-    async handleScheduleAdd() {
-      try {
-        await scheduleModel.createSchedule()
-      } catch (error) {
-        ElMessage.error(error.message)
+      const currentView = this.$refs.calendar.getApi().view.type
+      if (currentView === 'dayGridYear') {
+        const calendarApi = clickInfo.view.calendar
+        calendarApi.changeView('timeGridWeek', clickInfo.dateStr)
       }
     },
     async handleScheduleRemove(arg) {
@@ -144,6 +148,59 @@ export default defineComponent({
         await scheduleModel.deleteSchedule(arg.event.id)
       } catch (error) {
         ElMessage.error(error.message)
+      }
+    },
+    async getScheduleById(scheduleId) {
+      try {
+        return await scheduleModel.getScheduleForPanel(scheduleId)
+      } catch (error) {
+        ElMessage.error(error.message)
+      }
+    },
+    handleCalendarEventDelete(scheduleArgId) {
+      const events = this.currentEvents.filter(event => event.id === scheduleArgId)
+      events[0].remove()
+      this.drawer = false
+    },
+    async handleCalendarEventUpdate(scheduleArgId) {
+      try {
+        this.loading = true
+        const events = this.currentEvents.filter(event => event.id === scheduleArgId)
+        const scheduleArg = await this.getScheduleById(scheduleArgId)
+        events[0].setExtendedProp('name', scheduleArg.name)
+        events[0].setExtendedProp('grade', scheduleArg.grade)
+        events[0].setExtendedProp('subject', scheduleArg.subject)
+        events[0].setExtendedProp('teacher', scheduleArg.teacher)
+        events[0].setStart(new Date(scheduleArg.start))
+        events[0].setEnd(new Date(scheduleArg.end))
+        this.drawer = false
+      } catch (error) {
+        ElMessage.error(error.message)
+      } finally {
+        this.loading = false
+      }
+    },
+    async handleCalendarEventCreate(scheduleArgId) {
+      try {
+        this.loading = true
+        const scheduleArg = await this.getScheduleById(scheduleArgId)
+        const newEvent = {
+          id: scheduleArg.id,
+          start: new Date(scheduleArg.start),
+          end: new Date(scheduleArg.end),
+          extendedProps: {
+            name: scheduleArg.name,
+            grade: scheduleArg.grade,
+            subject: scheduleArg.subject,
+            teacher: scheduleArg.teacher,
+          },
+        }
+        this.$refs.calendar.getApi().addEvent(newEvent)
+        this.drawer = false
+      } catch (error) {
+        ElMessage.error(error.message)
+      } finally {
+        this.loading = false
       }
     },
     handleEventContent(arg) {
@@ -154,26 +211,30 @@ export default defineComponent({
         const nameEl = document.createElement('div')
         nameEl.innerHTML = arg.event.extendedProps.name
         nameEl.style.fontWeight = 'bold'
+        italicEl.append(nameEl)
+        const text1El = document.createElement('p')
+        text1El.innerHTML = `${arg.event.extendedProps.grade} ${arg.event.extendedProps.subject}`
+        text1El.style.marginTop = '5px'
+        text1El.style.whiteSpace = 'nowrap'
+        text1El.style.overflow = 'hidden'
+        text1El.style.textOverflow = 'ellipsis'
+        text1El.style.width = '100%'
+        italicEl.append(text1El)
+        const text2El = document.createElement('p')
+        text2El.innerHTML = arg.event.extendedProps.teacher
+        italicEl.append(text2El)
+        italicEl.setAttribute('class', 'plan_card')
+        return { domNodes: [italicEl] }
+      } if (type === 'listMonth') {
+        const italicEl = document.createElement('div')
+        const nameEl = document.createElement('div')
+        nameEl.innerHTML = `${arg.event.extendedProps.name}&nbsp;&nbsp;&nbsp;&nbsp;${arg.event.extendedProps.grade}&nbsp;${arg.event.extendedProps.subject}`
         nameEl.style.fontSize = '1em'
         nameEl.style.whiteSpace = 'nowrap'
         nameEl.style.overflow = 'hidden'
         nameEl.style.textOverflow = 'ellipsis'
         nameEl.style.width = '100%'
         italicEl.append(nameEl)
-        const text1El = document.createElement('p')
-        text1El.innerHTML = `${arg.event.extendedProps.grade} ${arg.event.extendedProps.subject}`
-        text1El.style.marginTop = '5px'
-        text1El.style.position = 'absolute'
-        text1El.style.left = '5px'
-        text1El.style.bottom = '30px'
-        italicEl.append(text1El)
-        const text2El = document.createElement('p')
-        text2El.innerHTML = arg.event.extendedProps.teacher
-        text2El.style.position = 'absolute'
-        text2El.style.left = '5px'
-        text2El.style.bottom = '10px'
-        italicEl.append(text2El)
-        italicEl.setAttribute('class', 'plan_card')
         return { domNodes: [italicEl] }
       }
       return null
@@ -188,14 +249,18 @@ export default defineComponent({
         <div class="title">课程面板</div>
         <!-- 分组选择下拉框 -->
         <div class="selector">
-          <el-select
+          <!-- <el-select
             filterable
             v-model="selectedUser"
             placeholder="选择身份筛选"
             @change="handleSelectChange"
             clearable
           >
-            <el-option-group v-for="group in groupUsers" :key="group.users" :label="group.role">
+            <el-option-group
+              v-for="group in groupUsers"
+              :key="group.users"
+              :label="group.role"
+            >
               <el-option
                 v-for="item in group.users"
                 :key="item.user_id"
@@ -203,17 +268,27 @@ export default defineComponent({
                 :value="item.user_id"
               />
             </el-option-group>
-          </el-select>
+          </el-select> -->
         </div>
       </div>
       <div class="calendar-main">
-        <FullCalendar class="course-calendar" :options="calendarOptions" ref="calendar">
+        <FullCalendar v-loading="loading" class="course-calendar" :options="calendarOptions" ref="calendar">
           <template v-slot:eventContent="arg">
             <b>{{ arg.timeText }}</b>
             <i>{{ arg.event.title }}</i>
           </template>
         </FullCalendar>
       </div>
+      <el-drawer v-model="drawer" title="日程详情" size="33%" :with-header="false">
+        <schedule
+          :scheduleId="currentScheduleId"
+          :isPanel="true"
+          :courseDateTime="currentCourseDateTime"
+          @deleted="handleCalendarEventDelete"
+          @updated="handleCalendarEventUpdate"
+          @created="handleCalendarEventCreate"
+        />
+      </el-drawer>
     </div>
   </div>
 </template>

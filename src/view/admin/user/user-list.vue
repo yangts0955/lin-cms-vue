@@ -10,7 +10,7 @@
     <!-- 表格 -->
     <el-table :data="tableData" v-loading="loading" @row-dblclick="rowDoubleClick">
       <el-table-column prop="real_name" label="姓名" align="center"></el-table-column>
-      <el-table-column prop="username" label="名称" align="center"></el-table-column>
+      <el-table-column prop="username" label="用户名" align="center"></el-table-column>
       <el-table-column prop="groupNames" label="所属分组" align="center"></el-table-column>
       <el-table-column prop="gender" label="性别" align="center">
         <template #default="scope">
@@ -65,7 +65,7 @@
       v-model="dialogFormVisible"
       style="margin-top: 30px"
     >
-      <div style="margin-top: -25px">
+      <div style="margin-top: -15px">
         <el-tabs v-model="activeTab" @tab-click="handleClick">
           <el-tab-pane label="修改信息" name="修改信息">
             <user-info

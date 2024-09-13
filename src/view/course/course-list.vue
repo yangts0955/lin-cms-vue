@@ -58,6 +58,14 @@
                     @click="handleScheduleDetail(scope.row.schedule_id)"
                     >详情</el-button
                   >
+                  <el-button
+                    size="small"
+                    type="danger"
+                    plain
+                    style="margin: 1px"
+                    @click="handleScheduleDelete(scope.row.schedule_id)"
+                    >删除</el-button
+                  >
                 </template>
               </el-table-column>
             </el-table>
@@ -112,6 +120,7 @@ import { ElMessageBox, ElMessage } from 'element-plus'
 import courseModel from '@/model/course'
 import { useRouter } from 'vue-router'
 import adminModel from '@/lin/model/admin'
+import scheduleModel from '@/model/schedule'
 import CourseUpdate from './course-create'
 
 export default {
@@ -179,6 +188,20 @@ export default {
       router.push({ path: '/schedule', query: { id } })
     }
 
+    const handleScheduleDelete = id => {
+      ElMessageBox.confirm('此操作将永久删除该日程, 是否继续?', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }).then(async () => {
+        const res = await scheduleModel.deleteSchedule(id)
+        if (res.code < window.MAX_SUCCESS_CODE) {
+          getCourses()
+          ElMessage.success(`${res.message}`)
+        }
+      })
+    }
+
     const handleEdit = id => {
       showEdit.value = true
       editCourseId.value = id
@@ -220,6 +243,7 @@ export default {
       indexMethod,
       handleDelete,
       handleScheduleDetail,
+      handleScheduleDelete,
       toggleRowExpansion,
       groupUsers,
       page,

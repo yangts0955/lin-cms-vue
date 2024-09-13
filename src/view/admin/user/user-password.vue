@@ -6,13 +6,13 @@
       status-icon
       :rules="rules"
       v-loading="loading"
-      label-width="100px"
+      label-width="120px"
       label-position="right"
     >
       <el-form-item label="密码" prop="newPassword">
         <el-input clearable type="password" v-model="info.newPassword" autocomplete="off"></el-input>
       </el-form-item>
-      <el-form-item label="确认密码" prop="confirmPassword" label-position="top">
+      <el-form-item label="确认密码" prop="confirmPassword">
         <el-input clearable type="password" v-model="info.confirmPassword" autocomplete="off"></el-input>
       </el-form-item>
       <el-form-item v-show="false">

@@ -25,6 +25,11 @@ class Schedule {
     const res = await get('v1/schedule/panel')
     return res
   }
+
+  async getScheduleForPanel(id) {
+    const res = await get(`v1/schedule/panel/${id}`)
+    return res
+  }
 }
 
 export default new Schedule()
